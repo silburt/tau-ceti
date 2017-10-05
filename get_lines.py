@@ -46,7 +46,7 @@ def sort_obs(line_ratio, date, line_ratios, dates):
     return line_ratios, dates
 
 ########## Main Loop ##########
-def extract_line_timeseries(dir, n_analyze, lines, base_offsets, linewidth, line_names):
+def extract_line_timeseries(dir, n_analyze, lines, base_offsets, linewidth, line_names, plot_lines=0):
     # get files
     readme = open(glob.glob("%sREADME_*.txt"%dir)[0],"r").readlines()
     fits_files = glob.glob("%s*.fits"%dir)
@@ -72,7 +72,6 @@ def extract_line_timeseries(dir, n_analyze, lines, base_offsets, linewidth, line
         date = datetime.strptime(hdulist[0].header['DATE-OBS'],timeformat)
         line_ratios, dates = sort_obs(line_ratio, date, line_ratios, dates)
 
-        plot_lines = 0
         if plot_lines == 1:
             #line location
             line_i = 2      #line to plot
@@ -103,7 +102,7 @@ def extract_line_timeseries(dir, n_analyze, lines, base_offsets, linewidth, line
 ########## Main Routine ##########
 if __name__ == '__main__':
     dir = "data/"
-    n_analyze = 10
+    n_analyze = 20
 
     #line info - units of angstroms
     line_names = ['Ca I','Na I D','Na I D']
@@ -114,6 +113,8 @@ if __name__ == '__main__':
     line_ratios, dates = extract_line_timeseries(dir, n_analyze, lines, base_offsets, linewidth, line_names)
     
     plt.plot(dates, line_ratios[:,0], 'o-')
+    plt.plot(dates, line_ratios[:,1], 'o-')
+    plt.plot(dates, line_ratios[:,2], 'o-')
     plt.xticks(rotation=30)
     plt.ylabel('line/base ratio')
     plt.show()

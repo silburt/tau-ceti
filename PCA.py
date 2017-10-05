@@ -1,5 +1,6 @@
 import numpy as np
 from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler
 import sys
 import glob
 from astropy.io import fits as pyfits
@@ -45,51 +46,86 @@ def sort_obs(flux_patches, date, X, dates):
     return X, dates
 
 ########## Get array of spectral features through time ##########
-def get_X(dir, n_analyze, wavelim_a, wavelim_b, plot_lines=0):
+def get_X(dir, n_analyze, wavelim_a, wavelim_b, plot_lines=0, save=1):
     # get files
     readme = open(glob.glob("%sREADME_*.txt"%dir)[0],"r").readlines()
     fits_files = glob.glob("%s*.fits"%dir)
-    
-    X, dates = [], []
-    timeformat = "%Y-%m-%dT%H:%M:%S.%f"
-    for fits in fits_files[0:n_analyze]:
-        hdulist = pyfits.open(fits)
-        
-        # get to the data part (in extension 1)
-        scidata = hdulist[1].data
-        wave = scidata[0][0]
-        flux = scidata[0][1]
-        err = scidata[0][2]
-        
-        # red/blue shift due to RV
-        tar_asson1 = hdulist[0].header['ASSON1']
-        RV_c = get_star_RV(tar_asson1, readme)
-        wave -= RV_c*wave
-        
-        # grab wavelength ranges of interest (i.e. leave out earth-atmosphere wavelengths)
-        flux_patches = get_spectral_patches(wave, flux, wavelim_a, wavelim_b)
-        
-        # sort by date
-        date = datetime.strptime(hdulist[0].header['DATE-OBS'],timeformat)
-        X, dates = sort_obs(flux_patches, date, X, dates)
 
-    return np.array(X), np.array(dates)
+    ext = ''
+    if n_analyze > 0:
+        fits_files = fits_files[0:n_analyze]
+        ext = '_n%d'%n_analyze
+
+    try:
+        X = np.load('%sX%s.npy'%(dir,ext))
+        dates = np.load('%sdates%s.npy'%(dir,ext))
+        print "Successfully loaded spectra"
+    except:
+        print "Couldn't load spectra, extracting from scratch..."
+        X, dates = [], []
+        timeformat = "%Y-%m-%dT%H:%M:%S.%f"
+        for fits in fits_files:
+            hdulist = pyfits.open(fits)
+            date = datetime.strptime(hdulist[0].header['DATE-OBS'],timeformat)
+            
+            # get to the data part (in extension 1)
+            scidata = hdulist[1].data
+            wave = scidata[0][0]
+            flux = scidata[0][1]
+            err = scidata[0][2]
+            
+            # red/blue shift due to RV
+            tar_asson1 = hdulist[0].header['ASSON1']
+            RV_c = get_star_RV(tar_asson1, readme)
+            wave -= RV_c*wave
+            
+            # grab wavelength ranges of interest (i.e. leave out earth-atmosphere wavelengths)
+            flux_patches = get_spectral_patches(wave, flux, wavelim_a, wavelim_b)
+            
+            # sort by date
+            # probably not neccesary? PCA doesn't make use of temporal/spatial correlations
+            #X, dates = sort_obs(flux_patches, date, X, dates)
+            X.append(flux_patches)
+            dates.append(date)
+
+        X, dates = np.array(X), np.array(dates)
+        if save == 1:
+            np.save('%sX%s.npy'%(dir,ext),X)
+            np.save('%sdates%s.npy'%(dir,ext),dates)
+
+    return X, dates
 
 ########## Main Routine ##########
 if __name__ == '__main__':
     # arguments
     dir = "data/"           # data directory
-    n_analyze = 20          # number of fits file to analyze
+    n_analyze = -1          # number of files to analyze. -1 means all in the directory
     n_PCA_components = 5    # number of pca components
-    wavelim_a = [5000]      # wavelengths to grab, [a,b] are limit pairs
+    wavelim_a = [4000]      # wavelengths to grab, [a,b] are limit pairs
     wavelim_b = [6000]
     
-    # Main calcs
+    # Get spectra
     X, dates = get_X(dir, n_analyze, wavelim_a, wavelim_b)
+    
+    # Normalize spectra
+    scaler = StandardScaler()
+    Xs = scaler.fit_transform(X)    #s for scaled
 
+    # Do PCA
     print "Finished getting data, performing PCA"
     pca = PCA(n_components=n_PCA_components)
-    pca.fit(X)
+    pca.fit(Xs)
     print(pca.explained_variance_ratio_)
+    
+    # Reconstructed spectra using principal components
+    n_reconstruct = 2
+    Xs_hat = np.dot(pca.transform(Xs)[:,:n_reconstruct], pca.components_[:n_reconstruct,:])
+
+    # plotting stuff
+    # inverse transform reconstructs original spectra
+    plt.plot(scaler.inverse_transform(Xs[10]))
+    plt.plot(scaler.inverse_transform(Xs_hat[10]))
+    plt.xlim([350,450])
+    plt.show()
 
 
