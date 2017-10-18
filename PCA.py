@@ -33,15 +33,23 @@ def get_spectral_patches(wave, flux, lim_a, lim_b):
     for i in range(len(lim_a)):
         a, b = lim_a[i], lim_b[i]
         patches = np.concatenate((patches,flux[(wave>=a)&(wave<b)]))
-    return np.array(patches)
+    return np.array(patches), wave[(wave>=a)&(wave<b)]
 
 ########## Get array of spectral features through time ##########
-def get_X(dir, n_analyze, ext, save=1):
+def get_X(dir, n_analyze, ext, save_delete_prev=1):
+    
+    if save_delete_prev == 1:
+        print 'deleting previous'
+        os.system('rm -rf %sX%s.npy'%(dir,ext))
+        os.system('rm -rf %sdates%s.npy'%(dir,ext))
+        os.system('rm -rf %sRV%s.npy'%(dir,ext))
+        os.system('rm -rf %swavelengths%s.npy'%(dir,ext))
     
     # wavelength params - 2960-5400nm ~ free of telluric lines (http://diglib.nso.edu/flux)
     wavelim_a = [4000]      # wavelengths to grab, [a,b] are limit pairs
     wavelim_b = [5700]
-    continuum_norm = [4720,4810]    #normalize each spectra by continuum region
+    #continuum_norm = [4720,4810]    #normalize each spectra by continuum region
+    continuum_norm = [4608,4609]
     
     # get files
     readme = open(glob.glob("%sREADME_*.txt"%dir)[0],"r").readlines()
@@ -74,13 +82,12 @@ def get_X(dir, n_analyze, ext, save=1):
             wave -= RV_c*wave
             
             # normalize spectra by continuum region
-            c_a, c_b = continuum_norm[0], continuum_norm[1]
-            index = np.where((wave>=c_a)&(wave<c_b))[0]
+            index = np.where((wave>=continuum_norm[0])&(wave<continuum_norm[1]))[0]
             norm = np.sum(flux[index]) / float(len(index))
             flux /= norm
             
             # grab wavelength ranges of interest (i.e. leave out earth-atmosphere wavelengths)
-            flux_patches = get_spectral_patches(wave, flux, wavelim_a, wavelim_b)
+            flux_patches, wave_trunc = get_spectral_patches(wave, flux, wavelim_a, wavelim_b)
         
             X.append(flux_patches)
             dates.append(date)
@@ -93,10 +100,11 @@ def get_X(dir, n_analyze, ext, save=1):
 
         # save
         X, dates, RV = np.array(X), np.array(dates), np.array(RV)
-        if save == 1:
+        if save_delete_prev == 1:
             np.save('%sX%s.npy'%(dir,ext),X)
             np.save('%sdates%s.npy'%(dir,ext),dates)
             np.save('%sRV%s.npy'%(dir,ext),RV)
+            np.save('%swavelengths%s.npy'%(dir,ext),wave_trunc)
 
     return X, dates, RV
 
@@ -112,6 +120,7 @@ def do_PCA(dir, n_analyze, n_components=2, save=1, plot=0):
         X_pc = np.load('%sX_pc%s.npy'%(dir,ext))
         RV = np.load('%sRV%s.npy'%(dir,ext))
         dates = np.load('%sdates%s.npy'%(dir,ext))
+        wavelength = np.load('%swavelengths%s.npy'%(dir,ext))
         print "Successfully loaded PC-projected spectra"
     except:
         print "Couldn't load PC-projected spectra, generating..."
@@ -128,7 +137,7 @@ def do_PCA(dir, n_analyze, n_components=2, save=1, plot=0):
         
         # Save projected spectra
         if save == 1:
-            np.save('%sX_pc%s.npy'%(dir,ext),X_pc)
+            np.save('%sX_%dpcs%s.npy'%(dir,n_components,ext),X_pc)
         
         # plotting stuff
         # inverse transform reconstructs original spectra
@@ -148,19 +157,18 @@ def do_PCA(dir, n_analyze, n_components=2, save=1, plot=0):
 if __name__ == '__main__':
     # data details
     dir = "data/"           # data directory
-    n_analyze = -1           # number of files to analyze. -1 means all in the directory
+    n_analyze = -1          # number of files to analyze. -1 means all in the directory
     n_PCA_components = 2    # number of pca components
-    save = 1                # 1 = save files
+    save_delete_prev = 1                # 1 = save files
     
     # Get PC spectra
-    X_pc, dates, RV = do_PCA(dir, n_analyze, n_PCA_components, save)
+    X_pc, dates, RV = do_PCA(dir, n_analyze, n_PCA_components, save_delete_prev)
     
     # plotting
     f, ax = plt.subplots(2, sharex=True)
     ax[0].plot(dates,X_pc[:,0])
     ax[0].plot(dates,X_pc[:,1])
     ax[1].plot(dates, RV)
+    plt.xticks(rotation=30)
     plt.show()
-
-    # Model PC using GPs
     
