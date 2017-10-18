@@ -28,26 +28,27 @@ def get_star_RV(tar_asson1, readme):
     return RV_c
 
 ########## Grab Wavelengths of Interest ##########
-def get_spectral_patches(wave, flux, lim_a, lim_b):
-    patches = np.zeros(0)
-    for i in range(len(lim_a)):
-        a, b = lim_a[i], lim_b[i]
-        patches = np.concatenate((patches,flux[(wave>=a)&(wave<b)]))
-    return np.array(patches), wave[(wave>=a)&(wave<b)]
+#def get_spectral_patches(wave, flux, lims):
+#    
+#    patches = np.zeros(0)
+#    for i in range(len(lims)):
+#        a, b = lims[i]
+#        patches = np.concatenate((patches,flux[(wave>=a)&(wave<b)]))
+#    return np.array(patches), wave[(wave>=a)&(wave<b)]
+
+# after arrays have already been grabbed and sorted.
+def get_wave_range(X, wavelengths, lims):
+    XX = []
+    a, b = lims[0]
+    for i in range(len(X)):
+        arr, wave = X[i], wavelengths[i]
+        XX.append(arr[(wave>=a)&(wave<b)])
+    return np.array(XX)
 
 ########## Get array of spectral features through time ##########
-def get_X(dir, n_analyze, ext, save_delete_prev=1):
-    
-    if save_delete_prev == 1:
-        print 'deleting previous'
-        os.system('rm -rf %sX%s.npy'%(dir,ext))
-        os.system('rm -rf %sdates%s.npy'%(dir,ext))
-        os.system('rm -rf %sRV%s.npy'%(dir,ext))
-        os.system('rm -rf %swavelengths%s.npy'%(dir,ext))
+def get_X(wavelims, dir, n_analyze, ext, save=1):
     
     # wavelength params - 2960-5400nm ~ free of telluric lines (http://diglib.nso.edu/flux)
-    wavelim_a = [4000]      # wavelengths to grab, [a,b] are limit pairs
-    wavelim_b = [5700]
     #continuum_norm = [4720,4810]    #normalize each spectra by continuum region
     continuum_norm = [4608,4609]
     
@@ -59,12 +60,13 @@ def get_X(dir, n_analyze, ext, save_delete_prev=1):
 
     try:
         X = np.load('%sX%s.npy'%(dir,ext))
+        wavelengths = np.load('%swavelengths%s.npy'%(dir,ext))
         dates = np.load('%sdates%s.npy'%(dir,ext))
         RV = np.load('%sRV%s.npy'%(dir,ext))
         print "Successfully loaded data"
     except:
         print "Couldn't load spectra, extracting from scratch..."
-        X, RV, dates = [], [], []
+        X, wavelengths, RV, dates = [], [], [], []
         timeformat = "%Y-%m-%dT%H:%M:%S.%f"
         for fits in fits_files:
             hdulist = pyfits.open(fits)
@@ -85,31 +87,33 @@ def get_X(dir, n_analyze, ext, save_delete_prev=1):
             index = np.where((wave>=continuum_norm[0])&(wave<continuum_norm[1]))[0]
             norm = np.sum(flux[index]) / float(len(index))
             flux /= norm
-            
-            # grab wavelength ranges of interest (i.e. leave out earth-atmosphere wavelengths)
-            flux_patches, wave_trunc = get_spectral_patches(wave, flux, wavelim_a, wavelim_b)
         
-            X.append(flux_patches)
+            X.append(flux)
             dates.append(date)
+            wavelengths.append(wave)
             RV.append(RV_c)     #Maybe this is the wrong RV?
 
         # sort dates- https://stackoverflow.com/questions/20533335/sorting-lists-by-datetime-in-python
-        zipped = zip(X, dates, RV)
-        zipped = sorted(zipped, key=lambda t: t[1])
-        X, dates, RV = zip(*zipped)
+        zipped = zip(X, wavelengths, dates, RV)
+        zipped = sorted(zipped, key=lambda t: t[2])
+        X, wavelengths, dates, RV = zip(*zipped)
 
         # save
-        X, dates, RV = np.array(X), np.array(dates), np.array(RV)
-        if save_delete_prev == 1:
+        X, wavelengths, dates, RV = np.array(X), np.array(wavelengths), np.array(dates), np.array(RV)
+        if save == 1:
             np.save('%sX%s.npy'%(dir,ext),X)
             np.save('%sdates%s.npy'%(dir,ext),dates)
             np.save('%sRV%s.npy'%(dir,ext),RV)
-            np.save('%swavelengths%s.npy'%(dir,ext),wave_trunc)
+            np.save('%swavelengths%s.npy'%(dir,ext),wavelengths)
+
+    # grab wavelength ranges of interest (i.e. leave out earth-atmosphere wavelengths)
+    print "getting wavelength range"
+    X = get_wave_range(X, wavelengths, wavelims)
 
     return X, dates, RV
 
 ########## Perform PCA ##########
-def do_PCA(dir, n_analyze, n_components=2, save=1, plot=0):
+def do_PCA(wavelims, dir, n_analyze, n_components=2, save=1, plot=0):
 
     # naming extension
     ext = ''
@@ -120,11 +124,11 @@ def do_PCA(dir, n_analyze, n_components=2, save=1, plot=0):
         X_pc = np.load('%sX_pc%s.npy'%(dir,ext))
         RV = np.load('%sRV%s.npy'%(dir,ext))
         dates = np.load('%sdates%s.npy'%(dir,ext))
-        wavelength = np.load('%swavelengths%s.npy'%(dir,ext))
-        print "Successfully loaded PC-projected spectra"
+        #wavelengths = np.load('%swavelengths%s.npy'%(dir,ext))
+        #print "Successfully loaded PC-projected spectra"
     except:
-        print "Couldn't load PC-projected spectra, generating..."
-        X, dates, RV = get_X(dir, n_analyze, ext, save)
+        #print "Couldn't load PC-projected spectra, generating..."
+        X, dates, RV = get_X(wavelims, dir, n_analyze, ext, save)
         
         # Normalize to 0 mean, unit variance
         scaler = StandardScaler()
@@ -158,11 +162,18 @@ if __name__ == '__main__':
     # data details
     dir = "data/"           # data directory
     n_analyze = -1          # number of files to analyze. -1 means all in the directory
-    n_PCA_components = 2    # number of pca components
-    save_delete_prev = 1                # 1 = save files
+    n_PCA_components = 97    # number of pca components
+    save = 1                # 1 = save files
     
-    # Get PC spectra
-    X_pc, dates, RV = do_PCA(dir, n_analyze, n_PCA_components, save_delete_prev)
+    # 2960-5400nm ~ free of telluric lines
+    wavelims = [(4000,5700)]      # wavelengths to grab from each spectra, (a,b) are limit pairs
+    #wavelims = np.linspace(4000,5750,17)
+    #wavelims = zip(wavelims[0:-1],wavelims[1:])
+    
+    for WL in wavelims:
+        # Get PC spectra
+        print WL
+        X_pc, dates, RV = do_PCA(wavelims, dir, n_analyze, n_PCA_components, save)
     
     # plotting
     f, ax = plt.subplots(2, sharex=True)
