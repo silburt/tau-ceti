@@ -4,11 +4,13 @@ from sklearn.preprocessing import StandardScaler
 import sys
 import glob
 from astropy.io import fits as pyfits
-import matplotlib.pyplot as plt
 import os
 import tarfile
 from datetime import datetime
-import george
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+#import george
 
 ########### Helper Functions ##########
 # get tar file and extract RV correction
@@ -145,7 +147,7 @@ def do_PCA(wavelimits, dir, n_analyze, plot_choice, n_components=2, save=1):
         X, wavelengths, dates, RV = get_X(wavelimits, dir, n_analyze, ext, save)
         
         # Normalize to 0 mean, unit variance
-        std_cutoff = 0.1    #near empty rows, std skyrokets.
+        std_cutoff = 1    #near empty rows, std skyrokets.
         means, stds = np.mean(X, axis=0), np.std(X, axis=0)
         good = np.where((stds>0)&(stds<std_cutoff))[0]     #remove bad/empty rows
         X, wavelengths, means, stds = X[:,good], wavelengths[good], means[good], stds[good]
@@ -201,7 +203,8 @@ if __name__ == '__main__':
     save = 1                # 1 = save files
     
     # plot_choice: 0=single range, 1=vs wavelength bins, 2=vs increasing bin size (about center)
-    plot_choice, bin_size, center = 0, 250, 4600
+    plot_choice = 0
+    bin_size, center = 250, 4600
     wavelims = get_wavelims(plot_choice, bin_size, center)
 
     # Main Loop
@@ -229,7 +232,7 @@ if __name__ == '__main__':
         plt.legend()
         plt.savefig('output/images/wavelength_vs_variance_%dbinsize.png'%bin_size)
         plt.show()
-    elif plot_choice ==2:
+    elif plot_choice == 2:
         plt.xlabel('bin size (center=%d)'%center)
         plt.ylabel('explained variance')
         plt.legend()
