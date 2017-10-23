@@ -10,7 +10,7 @@ import tarfile
 from datetime import datetime
 import george
 
-########### HELPER FUNCTIONS ##########
+########### Helper Functions ##########
 # get tar file and extract RV correction
 def get_star_RV(tar_asson1, readme):
     feature = 'HIERARCH ESO DRS CCF RV'
@@ -165,12 +165,16 @@ def do_PCA(wavelimits, dir, n_analyze, plot_choice, n_components=2, save=1):
         
         # inverse transform reconstructs original spectra
         if plot_choice == 0:
+            normed, pname = 1, ''
             # Reconstruct spectra using principal components
             Xs_hat = np.dot(pca.transform(Xs)[:,:n_components], pca.components_[:n_components,:])
             for i_s in range(3):
+                if normed == 1:
+                    orig, reconstruct = Xs[i_s], Xs_hat[i_s]
+                    pname='normed'
+                else:
+                    orig, reconstruct = Xs[i_s]*stds + means, Xs_hat[i_s]*stds + means
 #                orig, reconstruct = scaler.inverse_transform(Xs[i_s]), scaler.inverse_transform(Xs_hat[i_s])
-#                orig, reconstruct = Xs[i_s]*stds + means, Xs_hat[i_s]*stds + means
-                orig, reconstruct = Xs[i_s], Xs_hat[i_s]
                 plt.plot(wavelengths, orig, label='original')      #original signal
                 plt.plot(wavelengths, reconstruct, label='reconstructed',alpha=0.8)  #reduced PCA
                 plt.plot(wavelengths, np.abs(orig - reconstruct),alpha=0.5,label='abs(orig - rec)')
@@ -178,12 +182,13 @@ def do_PCA(wavelimits, dir, n_analyze, plot_choice, n_components=2, save=1):
                 plt.xlabel('wavelength')
                 plt.ylabel('normalized flux')
                 plt.title('%d PCs explain %f of the variance.'%(n_components, np.sum(pca.explained_variance_ratio_)))
-                plt.savefig('output/reconstruct_images/reconstructed_pc%d_i%d.png'%(n_components,i_s))
+                plt.savefig('output/reconstruct_images/reconstructed_pc%d_i%d_%s.png'%(n_components,i_s,pname))
                 plt.clf()
             plt.plot(wavelengths,stds)
             plt.ylabel('std')
             plt.xlabel('wavelength')
             plt.savefig('output/reconstruct_images/std_v_wavelength.png')
+            plt.clf()
 
     return X_pc, dates, RV, np.sum(pca.explained_variance_ratio_)
 
@@ -192,7 +197,7 @@ if __name__ == '__main__':
     # data details
     dir = "data/"           # data directory
     n_analyze = -1          # number of files to analyze. -1 means all in the directory
-    n_PCA_components = [50,100]    # number of pca components
+    n_PCA_components = [2,10,50,100]    # number of pca components
     save = 1                # 1 = save files
     
     # plot_choice: 0=single range, 1=vs wavelength bins, 2=vs increasing bin size (about center)
@@ -204,7 +209,7 @@ if __name__ == '__main__':
         x_plot, y_plot = [], []
         for WL in wavelims:
             # Get PC spectra
-            X_pc, dates, RV, ev = do_PCA(WL, dir, plot_choice, n_analyze, pcs, save)
+            X_pc, dates, RV, ev = do_PCA(WL, dir, n_analyze, plot_choice, pcs, save)
         
             if plot_choice == 1:
                 x_plot.append(WL[0])
@@ -230,11 +235,5 @@ if __name__ == '__main__':
         plt.legend()
         plt.savefig('output/images/binsize_vs_variance_%dcenter.png'%center)
         plt.show()
-
-#    f, ax = plt.subplots(2, sharex=True)
-#    ax[0].plot(dates,X_pc[:,0])
-#    ax[0].plot(dates,X_pc[:,1])
-#    ax[1].plot(dates, RV)
-#    plt.xticks(rotation=30)
 
 
