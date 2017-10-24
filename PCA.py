@@ -147,7 +147,7 @@ def do_PCA(wavelimits, dir, n_analyze, plot_choice, n_components=2, save=1):
         X, wavelengths, dates, RV = get_X(wavelimits, dir, n_analyze, ext, save)
         
         # Normalize to 0 mean, unit variance
-        std_cutoff = 1    #near empty rows, std skyrokets.
+        std_cutoff = 0.1    #near empty rows, std skyrokets.
         means, stds = np.mean(X, axis=0), np.std(X, axis=0)
         good = np.where((stds>0)&(stds<std_cutoff))[0]     #remove bad/empty rows
         X, wavelengths, means, stds = X[:,good], wavelengths[good], means[good], stds[good]
