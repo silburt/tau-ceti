@@ -197,7 +197,7 @@ def do_PCA(wavelimits, dir, n_analyze, plot_choice, n_components=2, save=1):
 ########## Main Routine ##########
 if __name__ == '__main__':
     # data details
-    dir = "data/"           # data directory
+    dir = "data/2012-2013/"           # data directory
     n_analyze = -1          # number of files to analyze. -1 means all in the directory
     n_PCA_components = [2,10,50,100]    # number of pca components
     save = 1                # 1 = save files
