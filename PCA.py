@@ -10,7 +10,6 @@ from datetime import datetime
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-#import george
 
 ########### Helper Functions ##########
 # get tar file and extract RV correction
@@ -167,7 +166,7 @@ def do_PCA(wavelimits, dir, n_analyze, plot_choice, n_components=2, save=1):
         
         # inverse transform reconstructs original spectra
         if plot_choice == 0:
-            normed, pname = 1, ''
+            normed, pname = 0, ''
             # Reconstruct spectra using principal components
             Xs_hat = np.dot(pca.transform(Xs)[:,:n_components], pca.components_[:n_components,:])
             for i_s in range(3):
@@ -183,8 +182,9 @@ def do_PCA(wavelimits, dir, n_analyze, plot_choice, n_components=2, save=1):
                 plt.legend(loc='upper left', fontsize=8)
                 plt.xlabel('wavelength')
                 plt.ylabel('normalized flux')
+                plt.xlim([4402,4410])
                 plt.title('%d PCs explain %f of the variance.'%(n_components, np.sum(pca.explained_variance_ratio_)))
-                plt.savefig('output/reconstruct_images/reconstructed_pc%d_i%d_%s.png'%(n_components,i_s,pname))
+                plt.savefig('output/reconstruct_images/reconstructed_pc%d_i%d_%s_zoom.png'%(n_components,i_s,pname))
                 plt.clf()
             plt.plot(wavelengths,stds)
             plt.ylabel('std')
