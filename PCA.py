@@ -1,3 +1,8 @@
+#This just has the bare bones for doing PCA, no plotting or endless options.
+#An important thread for my understanding is:
+#https://stats.stackexchange.com/questions/229092/how-to-reverse-pca-and-reconstruct-original-variables-from-several-principal-com
+#and I follow their notation.
+
 import numpy as np
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
@@ -29,7 +34,7 @@ def get_star_RV(tar_asson1, readme):
             break
     return RV_c
 
-# after arrays have already been grabbed and sorted.
+# Get flux array for corresponding wavelengths of interest
 def get_wave_range(X, wavelengths, lims):
     XX = []
     for i in range(len(X)):
@@ -41,47 +46,29 @@ def get_wave_range(X, wavelengths, lims):
         else:
             Xconcat = np.concatenate((Xconcat,Xi[(wave>=lims[0])&(wave<lims[1])]))
         XX.append(Xconcat)
+
+    # grab wavelengths
     wave_concat = np.zeros(0)
     if type(lims[0]) == tuple:
         for l in lims:  #grab multiple sub-ranges for single spectra
             wave_concat = np.concatenate((wave_concat,wave[(wave>=l[0])&(wave<l[1])]))
     else:
         wave_concat = np.concatenate((wave_concat,wave[(wave>=lims[0])&(wave<lims[1])]))
+
     return np.array(XX), wave_concat
 
-# Get Wavelimits - (a,b) pairs to grab for each spectra, 296-540nm~free of telluric lines (http://diglib.nso.edu/flux)
-def get_wavelims(plot_choice, binsize=250, center=4600):
-    if plot_choice == 0:
-        #---------standard range
-        wavelims = [(4000,5700)]  #single range
-        #wavelims = [((4000,4200),(4900,5700))] #multiple subranges in pca
-    elif plot_choice == 1:
-        #---------wavelength bins for fixed bin width
-        n = (5750-4000)/bin_size + 1
-        wavelims = np.linspace(4000,5750,n)
-        wavelims = zip(wavelims[0:-1],wavelims[1:])
-    elif plot_choice == 2:
-        #---------increasing bin widths about a central value
-        bin_widths = np.logspace(0,2.5,7,dtype=int)
-        wavelims = []
-        for b in bin_widths:
-            wavelims.append((center-b,center+b))
-    return wavelims
-
 ########## Get array of spectral features through time ##########
-def get_X(wavelimits, dir, n_analyze, ext, save=1):
+def get_X(dir, wavelimits, save=1):
     
     # get files
     readme = open(glob.glob("%sREADME_*.txt"%dir)[0],"r").readlines()
     fits_files = glob.glob("%s*.fits"%dir)
-    if n_analyze > 0:
-        fits_files = fits_files[0:n_analyze]
 
     try:
-        X = np.load('%sX%s.npy'%(dir,ext))
-        wavelengths = np.load('%swavelengths%s.npy'%(dir,ext))
-        dates = np.load('%sdates%s.npy'%(dir,ext))
-        RV = np.load('%sRV%s.npy'%(dir,ext))
+        X = np.load('%sX.npy'%dir)
+        wavelengths = np.load('%swavelengths.npy'%dir)
+        dates = np.load('%sdates.npy'%dir)
+        RV = np.load('%sRV.npy'%dir)
     except:
         print "Couldn't load spectra, extracting from scratch..."
         X, wavelengths, RV, dates = [], [], [], []
@@ -118,10 +105,10 @@ def get_X(wavelimits, dir, n_analyze, ext, save=1):
         # save
         X, wavelengths, dates, RV = np.array(X), np.array(wavelengths), np.array(dates), np.array(RV)
         if save == 1:
-            np.save('%sX%s.npy'%(dir,ext),X)
-            np.save('%sdates%s.npy'%(dir,ext),dates)
-            np.save('%sRV%s.npy'%(dir,ext),RV)
-            np.save('%swavelengths%s.npy'%(dir,ext),wavelengths)
+            np.save('%sX.npy'%dir,X)
+            np.save('%sdates.npy'%dir,dates)
+            np.save('%sRV.npy'%dir,RV)
+            np.save('%swavelengths.npy'%dir,wavelengths)
 
     # grab wavelength ranges of interest (i.e. leave out earth-atmosphere wavelengths)
     X, wavelengths = get_wave_range(X, wavelengths, wavelimits)
@@ -129,114 +116,52 @@ def get_X(wavelimits, dir, n_analyze, ext, save=1):
     return X, wavelengths, dates, RV
 
 ########## Perform PCA ##########
-def do_PCA(wavelimits, dir, n_analyze, plot_choice, n_components=2, save=1):
+def do_PCA(dir, wavelimits, n_components, save=1):
+    
+    # get X/wavelengths, prune bad wavelengths
+    X, wavelengths, dates, RV = get_X(dir, wavelimits, save)
 
-    # naming extension
-    ext = ''
-    if n_analyze > 0:
-        ext = '_n%d'%n_analyze
-
+    std_cutoff = 0.1                                    #near empty rows, std skyrokets
+    means, stds = np.mean(X, axis=0), np.std(X, axis=0)
+    good = np.where((stds>0)&(stds<std_cutoff))[0]      #remove bad/empty rows
+    X, wavelengths, means, stds = X[:,good], wavelengths[good], means[good], stds[good]
+    
     try:
-        X_pc = np.load('%sX_pc%s.npy'%(dir,ext))
-        RV = np.load('%sRV%s.npy'%(dir,ext))
-        dates = np.load('%sdates%s.npy'%(dir,ext))
-        #print "Successfully loaded PC-projected spectra"
+        Z = np.load('%sZ_%dpcs.npy'%(dir,n_components))
+        Xs_hat = np.load('%sXshat_%dpcs.npy'%(dir,n_components))
+        X_hat = np.load('%sXhat_%dpcs.npy'%(dir,n_components))
     except:
-        #print "Couldn't load PC-projected spectra, generating..."
-        X, wavelengths, dates, RV = get_X(wavelimits, dir, n_analyze, ext, save)
-        
-        # Normalize to 0 mean, unit variance
-        std_cutoff = 0.1    #near empty rows, std skyrokets.
-        means, stds = np.mean(X, axis=0), np.std(X, axis=0)
-        good = np.where((stds>0)&(stds<std_cutoff))[0]     #remove bad/empty rows
-        X, wavelengths, means, stds = X[:,good], wavelengths[good], means[good], stds[good]
-        Xs = (X - means)/stds
-        #scaler = StandardScaler()
-        #Xs = scaler.fit_transform(X)    #np.dot(X, self.components_.T)
-        
         # Do PCA
         pca = PCA(n_components=n_components)
-        X_pc = pca.fit_transform(Xs)
+        Xs = (X - means)/stds                           #normalize->mu=0,std=1
+        Z = pca.fit_transform(Xs)                       #PCA projections ("scores")
         print "%d PCs explain %f of the variance for wavelimits:."%(n_components, np.sum(pca.explained_variance_ratio_)), wavelimits
-        #print pca.explained_variance_ratio_
-        
+
+        # Reconstruct spectra using n pcs (X_hat = XVV^T)
+        Xs_hat = np.dot(Z, pca.components_)             #normalized
+        X_hat = Xs_hat*stds + means                     #unnormalized
+
         # Save projected spectra
         if save == 1:
-            np.save('%sX_%dpcs%s.npy'%(dir,n_components,ext),X_pc)
-        
-        # inverse transform reconstructs original spectra
-        if plot_choice == 0:
-            normed, pname = 0, ''
-            # Reconstruct spectra using principal components
-            Xs_hat = np.dot(pca.transform(Xs)[:,:n_components], pca.components_[:n_components,:])
-            for i_s in range(3):
-                if normed == 1:
-                    orig, reconstruct = Xs[i_s], Xs_hat[i_s]
-                    pname='normed'
-                else:
-                    orig, reconstruct = Xs[i_s]*stds + means, Xs_hat[i_s]*stds + means
-#                orig, reconstruct = scaler.inverse_transform(Xs[i_s]), scaler.inverse_transform(Xs_hat[i_s])
-                plt.plot(wavelengths, orig, label='original')      #original signal
-                plt.plot(wavelengths, reconstruct, label='reconstructed',alpha=0.8)  #reduced PCA
-                plt.plot(wavelengths, np.abs(orig - reconstruct),alpha=0.5,label='abs(orig - rec)')
-                plt.legend(loc='upper left', fontsize=8)
-                plt.xlabel('wavelength')
-                plt.ylabel('normalized flux')
-                plt.xlim([4402,4410])
-                plt.title('%d PCs explain %f of the variance.'%(n_components, np.sum(pca.explained_variance_ratio_)))
-                plt.savefig('output/reconstruct_images/reconstructed_pc%d_i%d_%s_zoom.png'%(n_components,i_s,pname))
-                plt.clf()
-            plt.plot(wavelengths,stds)
-            plt.ylabel('std')
-            plt.xlabel('wavelength')
-            plt.savefig('output/reconstruct_images/std_v_wavelength.png')
-            plt.clf()
+            np.save('%sZ_%dpcs.npy'%(dir,n_components),Z)
+            np.save('%sXshat_%dpcs.npy'%(dir,n_components),Xs_hat)
+            np.save('%sXhat_%dpcs.npy'%(dir,n_components),X_hat)
 
-    return X_pc, dates, RV, np.sum(pca.explained_variance_ratio_)
+    return X, Z, Xs_hat, X_hat, wavelengths
 
 ########## Main Routine ##########
 if __name__ == '__main__':
     # data details
-    dir = "data/2012-2013/"           # data directory
-    n_analyze = -1          # number of files to analyze. -1 means all in the directory
-    n_PCA_components = [2,10,50,100]    # number of pca components
-    save = 1                # 1 = save files
+    dir = "data/"             # data directory
+    n_PCA_components = [1,2]    # number of pca components
     
-    # plot_choice: 0=single range, 1=vs wavelength bins, 2=vs increasing bin size (about center)
-    plot_choice = 0
-    bin_size, center = 250, 4600
-    wavelims = get_wavelims(plot_choice, bin_size, center)
+    wavelims = [(4000,5700)]  #single range
+    #wavelims = [((4000,4200),(4900,5700))] #multiple subranges in pca
 
     # Main Loop
     for pcs in n_PCA_components:
-        x_plot, y_plot = [], []
         for WL in wavelims:
-            # Get PC spectra
-            X_pc, dates, RV, ev = do_PCA(WL, dir, n_analyze, plot_choice, pcs, save)
-        
-            if plot_choice == 1:
-                x_plot.append(WL[0])
-                y_plot.append(ev)
-            elif plot_choice == 2:
-                x_plot.append(WL[1] - WL[0])
-                y_plot.append(ev)
-    
-        if plot_choice > 0:
-            plt.plot(x_plot, y_plot, '--o', label='%d PCs'%pcs)
+            X, Z, Xs_hat, X_hat, wavelengths = do_PCA(dir, WL, pcs)
 
-    ####################################################
-    # Plotting
-    if plot_choice == 1:
-        plt.xlabel('wavelength (bin size=%d)'%bin_size)
-        plt.ylabel('explained variance')
-        plt.legend()
-        plt.savefig('output/images/wavelength_vs_variance_%dbinsize.png'%bin_size)
-        plt.show()
-    elif plot_choice == 2:
-        plt.xlabel('bin size (center=%d)'%center)
-        plt.ylabel('explained variance')
-        plt.legend()
-        plt.savefig('output/images/binsize_vs_variance_%dcenter.png'%center)
-        plt.show()
 
 
