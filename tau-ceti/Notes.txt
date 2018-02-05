@@ -1,0 +1,6 @@
+-If you look in the SPECSYS variable in the header (data[0].header[‘SPECSYS’]) it says BARYCENT, which is the barycenter of the solar system. I.e. these spectra already have the Earth’s motion removed, whew.
+
+-I think you need to also remove the radial velocity (i.e. mean motion) of the star from the spectra. According to http://simbad.u-strasbg.fr/simbad/sim-basic?Ident=tau+ceti this is -16.68 km/s. I think I need to convert the radial velocity to a wavelength shift (red/blueshift). 
+
+-See if you can download all this to the ACI-I node and work interactively there? I don’t think you want to download it all onto your computer. 
+
