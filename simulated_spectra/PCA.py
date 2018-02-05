@@ -74,7 +74,7 @@ def do_PCA(dir, wavelimits, n_components, reconstruct=1):
     pca = PCA(n_components=n_components)
     Z = pca.fit_transform(Xs)                       #PCA projections (scores/loadings)
     V = pca.components_                             #eigenvectors (directions of maximum variance)
-    print "%d PCs explain %f of the variance for wavelimits:."%(n_components, np.sum(pca.explained_variance_ratio_)), wavelimits
+    print("%d PCs explain %f of the variance for wavelimits:."%(n_components, np.sum(pca.explained_variance_ratio_)), wavelimits)
     
     Xs_hat, X_hat = None, None
     if reconstruct == 1:

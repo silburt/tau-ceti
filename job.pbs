@@ -1,2 +1,0 @@
-#!/bin/bash#PBS -l nodes=1:ppn=1 #PBS -l walltime=24:00:00 #PBS -l pmem=6gb 		## Requests 6 gigabytes of memory per process#PBS -A ebf11_a_g_sc_default 	## Specifies the allocation. Use –A open for open queue#PBS -j oe 			## Requests that regular output and terminal output go to the same filecd $PBS_O_WORKDIR
-python PCA.py > pca_out.txt
