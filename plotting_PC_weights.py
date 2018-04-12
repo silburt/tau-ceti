@@ -9,7 +9,7 @@ n_pcs = 8
 wavelims = (4000,5700)
 
 # do PCA
-X, V, Z, Xs_hat, X_hat, wavelengths, ev = pca_py.do_PCA(dir, wavelims, n_pcs)
+X, V, Z, Xs_hat, X_hat, wavelengths, ev, n = pca_py.do_PCA(dir, wavelims, n_pcs)
 
 # plot
 f, (ax1, ax2, ax3, ax4) = plt.subplots(4, 1, sharex=True, figsize=(12,8))
