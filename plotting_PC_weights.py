@@ -12,21 +12,15 @@ wavelims = (4000,5700)
 X, V, Z, Xs_hat, X_hat, wavelengths, ev, n_spec = pca_py.do_PCA(dir, wavelims, n_pcs)
 
 # plot
-f, (ax1, ax2, ax3, ax4) = plt.subplots(4, 1, sharex=True, figsize=(12,8))
+f, ax = plt.subplots(n_pcs-1, 1, sharex=True, figsize=(12,8))
+plt.subplots_adjust(hspace=0)
+ax[0].set_ylabel('PC 0 and 1')
+ax[n_pcs-2].set_xlabel('wavelength')
 for i in range(2):
-    ax1.plot(wavelengths, V[i,:], ',', alpha=1-0.1*i, label='pc %d'%(i))
-for i in range(2):
-    ax2.plot(wavelengths, V[i+2,:], ',', alpha=1-0.1*i, label='pc %d'%(i+2))
-for i in range(2):
-    ax3.plot(wavelengths, V[i+4,:], ',', alpha=1-0.1*i, label='pc %d'%(i+4))
-for i in range(2):
-    ax4.plot(wavelengths, V[i+6,:], ',', alpha=1-0.1*i, label='pc %d'%(i+6))
-ax1.legend(fontsize=8, numpoints=1)
-ax2.legend(fontsize=8, numpoints=1)
-ax3.legend(fontsize=8, numpoints=1)
-ax4.legend(fontsize=8, numpoints=1)
-ax4.set_xlabel('wavelength')
-ax4.set_ylabel('eigenvector values')
-#ax1.set_ylim([-0.02,0.02])
-ax1.set_title('explained variance = %f, n_spectra=%d'%(ev, n_spec))
+    ax[0].plot(wavelengths, V[i,:], ',', alpha=1-0.8*i, label='pc %d'%(i))
+for i in range(1, n_pcs-1):
+    ax[i].plot(wavelengths, V[i+1,:], ',')
+    ax[i].set_ylabel('PC %d'%(i+1))
+
+ax[0].set_title('explained variance = %f, n_spectra=%d'%(ev, n_spec))
 plt.savefig('output/pca_visualize_%dcomponents.png'%n_pcs)
