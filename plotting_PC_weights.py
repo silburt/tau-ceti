@@ -22,6 +22,9 @@ for i in range(2):
 for i in range(2):
     ax4.plot(wavelengths, V[i+6,:], ',', alpha=1-0.1*i, label='pc %d'%(i+6))
 ax1.legend(fontsize=8, numpoints=1)
+ax2.legend(fontsize=8, numpoints=1)
+ax3.legend(fontsize=8, numpoints=1)
+ax4.legend(fontsize=8, numpoints=1)
 ax4.set_xlabel('wavelength')
 ax4.set_ylabel('eigenvector values')
 #ax1.set_ylim([-0.02,0.02])
