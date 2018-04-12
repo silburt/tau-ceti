@@ -1,6 +1,7 @@
 #This has very similar functionality to PCA.py except includes all the plotting stuff which is hard to isolate. Thus, I made PCA.py so that it can be used in conjunction with other code (e.g. sPCA.py) and not have the plotting crap get in the way.
 
 import numpy as np
+import PCA as pca_py
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 import sys
@@ -14,43 +15,6 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 ########### Helper Functions ##########
-# get tar file and extract RV correction
-def get_star_RV(tar_asson1, readme):
-    feature = 'HIERARCH ESO DRS CCF RV'
-    for l in readme:
-        if tar_asson1 in l:
-            tar_string = "%sADP.%s.tar"%(dir,l.split("ADP.")[1].split(".tar")[0])
-            try:
-                tar = tarfile.open(tar_string)
-                ext_tar = tar.extractfile(tar.getmembers()[1])
-                RV = pyfits.open(ext_tar)   #ccf_G2_A.fits is 2nd index
-                RV_c = RV[0].header[feature] / 299792.458   #RV / speed of light
-            except:
-                print "couldnt load %s."%tar_string
-                return 0
-            break
-    return RV_c
-
-# after arrays have already been grabbed and sorted.
-def get_wave_range(X, wavelengths, lims):
-    XX = []
-    for i in range(len(X)):
-        Xi, wave = X[i], wavelengths[i]
-        Xconcat = np.zeros(0)
-        if type(lims[0]) == tuple:
-            for l in lims:  #grab multiple sub-ranges for single spectra
-                Xconcat = np.concatenate((Xconcat,Xi[(wave>=l[0])&(wave<l[1])]))
-        else:
-            Xconcat = np.concatenate((Xconcat,Xi[(wave>=lims[0])&(wave<lims[1])]))
-        XX.append(Xconcat)
-    wave_concat = np.zeros(0)
-    if type(lims[0]) == tuple:
-        for l in lims:  #grab multiple sub-ranges for single spectra
-            wave_concat = np.concatenate((wave_concat,wave[(wave>=l[0])&(wave<l[1])]))
-    else:
-        wave_concat = np.concatenate((wave_concat,wave[(wave>=lims[0])&(wave<lims[1])]))
-    return np.array(XX), wave_concat
-
 # Get Wavelimits - (a,b) pairs to grab for each spectra, 296-540nm~free of telluric lines (http://diglib.nso.edu/flux)
 def get_wavelims(plot_choice, binsize=250, center=4600):
     if plot_choice == 0:
@@ -70,66 +34,6 @@ def get_wavelims(plot_choice, binsize=250, center=4600):
             wavelims.append((center-b,center+b))
     return wavelims
 
-########## Get array of spectral features through time ##########
-def get_X(wavelimits, dir, n_analyze, ext, save=1):
-    
-    # get files
-    readme = open(glob.glob("%sREADME_*.txt"%dir)[0],"r").readlines()
-    fits_files = glob.glob("%s*.fits"%dir)
-    if n_analyze > 0:
-        fits_files = fits_files[0:n_analyze]
-
-    try:
-        X = np.load('%sX%s.npy'%(dir,ext))
-        wavelengths = np.load('%swavelengths%s.npy'%(dir,ext))
-        dates = np.load('%sdates%s.npy'%(dir,ext))
-        RV = np.load('%sRV%s.npy'%(dir,ext))
-    except:
-        print "Couldn't load spectra, extracting from scratch..."
-        X, wavelengths, RV, dates = [], [], [], []
-        timeformat = "%Y-%m-%dT%H:%M:%S.%f"
-        for fits in fits_files:
-            hdulist = pyfits.open(fits)
-            date = datetime.strptime(hdulist[0].header['DATE-OBS'],timeformat)
-            
-            # get to the data part (in extension 1)
-            scidata = hdulist[1].data
-            wave = scidata[0][0]
-            flux = scidata[0][1]
-            err = scidata[0][2]
-            
-            # red/blue shift due to RV
-            tar_asson1 = hdulist[0].header['ASSON1']
-            RV_c = get_star_RV(tar_asson1, readme)
-            wave -= RV_c*wave
-            
-            # normalize spectra by continuum region
-            norm = np.sum(flux) / len(flux)
-            flux /= norm
-        
-            X.append(flux)
-            dates.append(date)
-            wavelengths.append(wave)
-            RV.append(RV_c)     #Maybe this is the wrong RV?
-
-        # sort dates- https://stackoverflow.com/questions/20533335/sorting-lists-by-datetime-in-python
-        zipped = zip(X, wavelengths, dates, RV)
-        zipped = sorted(zipped, key=lambda t: t[2])
-        X, wavelengths, dates, RV = zip(*zipped)
-
-        # save
-        X, wavelengths, dates, RV = np.array(X), np.array(wavelengths), np.array(dates), np.array(RV)
-        if save == 1:
-            np.save('%sX%s.npy'%(dir,ext),X)
-            np.save('%sdates%s.npy'%(dir,ext),dates)
-            np.save('%sRV%s.npy'%(dir,ext),RV)
-            np.save('%swavelengths%s.npy'%(dir,ext),wavelengths)
-
-    # grab wavelength ranges of interest (i.e. leave out earth-atmosphere wavelengths)
-    X, wavelengths = get_wave_range(X, wavelengths, wavelimits)
-
-    return X, wavelengths, dates, RV
-
 ########## Perform PCA ##########
 def do_PCA(wavelimits, dir, n_analyze, plot_choice, n_components=2, save=1):
 
@@ -144,27 +48,26 @@ def do_PCA(wavelimits, dir, n_analyze, plot_choice, n_components=2, save=1):
         dates = np.load('%sdates%s.npy'%(dir,ext))
         #print "Successfully loaded PC-projected spectra"
     except:
-        #print "Couldn't load PC-projected spectra, generating..."
-        X, wavelengths, dates, RV = get_X(wavelimits, dir, n_analyze, ext, save)
+        # get X/wavelengths, prune bad wavelengths
+        X, wavelengths, dates, RV = pca_py.get_X(dir, wavelimits, save)
         
-        # Normalize to 0 mean, unit variance
-        std_cutoff = 0.1    #near empty rows, std skyrokets.
+        std_cutoff = 0.1                                    #near empty rows, std skyrokets
         means, stds = np.mean(X, axis=0), np.std(X, axis=0)
-        good = np.where((stds>0)&(stds<std_cutoff))[0]     #remove bad/empty rows
+        good = np.where((stds>0)&(stds<std_cutoff))[0]      #remove bad/empty rows
         X, wavelengths, means, stds = X[:,good], wavelengths[good], means[good], stds[good]
-        Xs = (X - means)/stds
-        #scaler = StandardScaler()
-        #Xs = scaler.fit_transform(X)    #np.dot(X, self.components_.T)
+        
+        # Normalize - don't standardize (divide by stds) since all dimensions are of same type.
+        # Doing so would wrongly re-weight the importance of small/large feature variations.
+        Xs = X - means
         
         # Do PCA
         pca = PCA(n_components=n_components)
         X_pc = pca.fit_transform(Xs)
         print "%d PCs explain %f of the variance for wavelimits:."%(n_components, np.sum(pca.explained_variance_ratio_)), wavelimits
-        #print pca.explained_variance_ratio_
         
         # Save projected spectra
         if save == 1:
-            np.save('%sX_%dpcs%s.npy'%(dir,n_components,ext),X_pc)
+            np.save('%sX_%dpcs%s.npy'%(dir,n_components,ext), X_pc)
         
         # inverse transform reconstructs original spectra
         if plot_choice == 0:

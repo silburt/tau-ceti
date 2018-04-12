@@ -126,9 +126,12 @@ def do_PCA(dir, wavelimits, n_components, save=1):
     good = np.where((stds>0)&(stds<std_cutoff))[0]      #remove bad/empty rows
     X, wavelengths, means, stds = X[:,good], wavelengths[good], means[good], stds[good]
     
+    # Normalize - don't standardize (divide by stds) since all dimensions are of same type.
+    # Doing so would wrongly re-weight the importance of small/large feature variations.
+    Xs = X - means
+    #Xs = (X - means)/stds                           #bad normalization
+    
     # Do PCA
-    Xs = (X - means)/stds                           #normalize
-    #Xs = X/stds
     pca = PCA(n_components=n_components)
     Z = pca.fit_transform(Xs)                       #PCA projections (scores/loadings)
     V = pca.components_                             #eigenvectors (directions of maximum variance)
