@@ -12,7 +12,7 @@ if __name__ == '__main__':
     wavelims = (4000,5700)
 
     # do PCA
-    X, V, Z, Xs_hat, X_hat, wavelengths, ev = do_PCA(dir, wavelims, n_pcs)
+    X, V, Z, Xs_hat, X_hat, wavelengths, ev, n = do_PCA(dir, wavelims, n_pcs)
 
     # get residuals
     X_residual = X - X_hat

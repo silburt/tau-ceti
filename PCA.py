@@ -152,7 +152,7 @@ def do_PCA(dir, wavelimits, n_components, save=1):
 #            np.save('%sXshat_%dpcs.npy'%(dir,n_components),Xs_hat)
 #            np.save('%sXhat_%dpcs.npy'%(dir,n_components),X_hat)
 
-    return X, V, Z, Xs_hat, X_hat, wavelengths, np.sum(pca.explained_variance_ratio_)
+    return X, V, Z, Xs_hat, X_hat, wavelengths, np.sum(pca.explained_variance_ratio_), len(X)
 
 ########## Main Routine ##########
 if __name__ == '__main__':
@@ -166,7 +166,7 @@ if __name__ == '__main__':
     # Main Loop
     for pcs in n_PCA_components:
         for WL in wavelims:
-            X, V, Z, Xs_hat, X_hat, wavelengths, ev = do_PCA(dir, WL, pcs, 0)
+            X, V, Z, Xs_hat, X_hat, wavelengths, ev, n = do_PCA(dir, WL, pcs, 0)
 
 
 
