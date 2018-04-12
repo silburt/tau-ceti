@@ -4,12 +4,12 @@ import PCA as pca_py
 import numpy as np
 import matplotlib.pyplot as plt
 
-dir = "data/"           # data directory
+dir = "data/2012-2013/"           # data directory
 n_pcs = 8
 wavelims = (4000,5700)
 
 # do PCA
-X, V, Z, Xs_hat, X_hat, wavelengths, ev, n = pca_py.do_PCA(dir, wavelims, n_pcs)
+X, V, Z, Xs_hat, X_hat, wavelengths, ev, n_spec = pca_py.do_PCA(dir, wavelims, n_pcs)
 
 # plot
 f, (ax1, ax2, ax3, ax4) = plt.subplots(4, 1, sharex=True, figsize=(12,8))
@@ -28,5 +28,5 @@ ax4.legend(fontsize=8, numpoints=1)
 ax4.set_xlabel('wavelength')
 ax4.set_ylabel('eigenvector values')
 #ax1.set_ylim([-0.02,0.02])
-ax1.set_title('explained variance = %f'%ev)
+ax1.set_title('explained variance = %f, n_spectra=%d'%(ev, n_spec))
 plt.savefig('output/pca_visualize_%dcomponents.png'%n_pcs)
