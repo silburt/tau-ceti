@@ -4,8 +4,8 @@ import PCA as pca_py
 import numpy as np
 import matplotlib.pyplot as plt
 
-#dir = "data/2012-2013/"           # data directory
-dir = "data/"
+dir = "data/2012-2013/"           # data directory
+#dir = "data/"
 n_pcs = 8
 #wavelims = (4000,5700)              # clean range
 wavelims = (3800,6850)              # full range
@@ -40,7 +40,7 @@ np.random.seed(42)
 rs = np.random.randint(0,len(X),n_draw)
 
 # plot sub-regions
-lims = [(4800,5200),(6300,6700)]
+lims = [(4900,5100),(6400,6650)]
 for lim in lims:
     l1, l2 = lim
     plt.figure(figsize=(13,8))
