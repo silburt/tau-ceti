@@ -29,7 +29,7 @@ def get_star_RV(tar_asson1, readme):
                 RV = pyfits.open(ext_tar)
                 RV_c = RV[0].header[feature] / 299792.458       #RV / speed of light
             except:
-                print "couldnt load %s."%tar_string
+                print("couldnt load %s."%tar_string)
                 return 0
             break
     return RV_c
@@ -70,7 +70,7 @@ def get_X(dir, wavelimits, save=1):
         dates = np.load('%sdates.npy'%dir)
         RV = np.load('%sRV.npy'%dir)
     except:
-        print "Couldn't load spectra, extracting from scratch..."
+        print("Couldn't load spectra, extracting from scratch...")
         X, wavelengths, RV, dates = [], [], [], []
         timeformat = "%Y-%m-%dT%H:%M:%S.%f"
         for fits in fits_files:
@@ -121,10 +121,15 @@ def do_PCA(dir, wavelimits, n_components, save=1):
     # get X/wavelengths, prune bad wavelengths
     X, wavelengths, dates, RV = get_X(dir, wavelimits, save)
 
-    std_cutoff = 0.1                                    #near empty rows, std skyrokets
+    std_rows_cutoff = 0.1                 #near empty rows, std skyrokets
     means, stds = np.mean(X, axis=0), np.std(X, axis=0)
-    good = np.where((stds>0)&(stds<std_cutoff))[0]      #remove bad/empty rows
-    X, wavelengths, means, stds = X[:,good], wavelengths[good], means[good], stds[good]
+    good_rows = np.where((stds>0)&(stds<std_rows_cutoff))[0]      #remove bad/empty rows
+    X, wavelengths, means, stds = X[:,good_rows], wavelengths[good_rows], means[good_rows], stds[good_rows]
+    
+    # remove bad spectra
+    std_spec_cutoff = 4
+    good_spec = np.where(np.max(np.abs((X - means)/stds), axis=1)<std_spec_cutoff)[0]
+    X = X[good_spec]
     
     # Normalize - don't standardize (divide by stds) since all dimensions are of same type.
     # Doing so would wrongly re-weight the importance of small/large feature variations.
@@ -135,7 +140,7 @@ def do_PCA(dir, wavelimits, n_components, save=1):
     pca = PCA(n_components=n_components)
     Z = pca.fit_transform(Xs)                       #PCA projections (scores/loadings)
     V = pca.components_                             #eigenvectors (directions of maximum variance)
-    print "%d PCs explain %f of the variance for wavelimits:."%(n_components, np.sum(pca.explained_variance_ratio_)), wavelimits
+    print("%d PCs explain %f of the variance for wavelimits:."%(n_components, np.sum(pca.explained_variance_ratio_)), wavelimits)
     
     # Reconstruct spectra using n pcs (X_hat = XVV^T = ZV^T)
     Xs_hat = np.dot(Z, V)                           #normalized

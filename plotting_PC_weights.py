@@ -4,8 +4,8 @@ import PCA as pca_py
 import numpy as np
 import matplotlib.pyplot as plt
 
-dir = "data/2012-2013/"           # data directory
-#dir = "data/"
+#dir = "data/2012-2013/"           # data directory
+dir = "data/"
 n_pcs = 8
 #wavelims = (4000,5700)              # clean range
 wavelims = (3800,6850)              # full range
@@ -23,7 +23,7 @@ for i in range(0, n_pcs):
     ax[i].set_ylabel('PC %d'%(i+1))
 
 ax[0].set_title('explained variance = %f, n_spectra=%d'%(ev, n_spec))
-plt.savefig('output/pca_visualize_%dcomponents.png'%n_pcs)
+plt.savefig('output/pca_visualize_%dcomponents_n%d.png'%(n_pcs, n_spec))
 plt.close()
 
 # plot mean Spectra
@@ -35,22 +35,20 @@ plt.ylabel('flux')
 plt.savefig('output/mean_spectra_n%d.png'%n_spec)
 plt.close()
 
-# busy region
-l1, l2 = 6000, 6500
-plt.figure(figsize=(13,8))
-plt.plot(wavelengths, X_mean)
-plt.xlim([l1, l2])
-plt.xlabel('wavelength (angstroms)')
-plt.ylabel('flux')
-plt.savefig('output/mean_spectra_n%d_%d-%d.png'%(n_spec, l1, l2))
-plt.close()
+n_draw = 20
+np.random.seed(42)
+rs = np.random.randint(0,len(X),n_draw)
 
-# quiet region
-l1, l2 = 4000, 5000
-plt.figure(figsize=(13,8))
-plt.plot(wavelengths, X_mean)
-plt.xlim([l1, l2])
-plt.xlabel('wavelength (angstroms)')
-plt.ylabel('flux')
-plt.savefig('output/mean_spectra_n%d_%d-%d.png'%(n_spec, l1, l2))
-plt.close()
+# plot sub-regions
+lims = [(4800,5200),(6300,6700)]
+for lim in lims:
+    l1, l2 = lim
+    plt.figure(figsize=(13,8))
+    for i in range(0,n_draw):
+        plt.plot(wavelengths, X[rs[i]], 'k,')
+    plt.plot(wavelengths, X_mean, linewidth=1, alpha=0.7)
+    plt.xlim([l1, l2])
+    plt.xlabel('wavelength (angstroms)')
+    plt.ylabel('flux')
+    plt.savefig('output/mean_spectra_n%d_%d-%d.png'%(n_spec, l1, l2))
+    plt.close()
