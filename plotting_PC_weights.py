@@ -41,7 +41,7 @@ np.random.shuffle(rs)
 rs = rs[0:n_draw]
 
 # plot spectra sub-regions
-lims = [(5000,5050),(6525,6600)]
+lims = [(5000,5025),(6525,6600)]
 for lim in lims:
     l1, l2 = lim
     plt.figure(figsize=(13,8))
