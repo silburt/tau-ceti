@@ -144,7 +144,7 @@ def do_PCA(dir, wavelimits, n_components, save=1):
     
     # Reconstruct spectra using n pcs (X_hat = XVV^T = ZV^T)
     Xs_hat = np.dot(Z, V)                           #normalized
-    X_hat = Xs_hat*stds + means                     #unnormalized
+    X_hat = Xs_hat + means                          #unnormalized
     
 #    try:
 #        Z = np.load('%sZ_%dpcs.npy'%(dir,n_components))
