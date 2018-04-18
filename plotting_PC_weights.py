@@ -16,7 +16,6 @@ X, V, Z, Xs_hat, X_hat, wavelengths, ev, n_spec = pca_py.do_PCA(dir, wavelims, n
 # plot PCs
 f, ax = plt.subplots(n_pcs, 1, sharex=True, figsize=(12,8))
 plt.subplots_adjust(hspace=0)
-ax[0].set_ylabel('PC 0 and 1')
 ax[n_pcs-1].set_xlabel('wavelength (angstroms)')
 for i in range(0, n_pcs):
     ax[i].plot(wavelengths, V[i,:], ',')
@@ -36,12 +35,12 @@ plt.savefig('output/mean_spectra_n%d.png'%n_spec)
 plt.close()
 
 n_draw = 100
-np.random.seed(30)   #42 is a good choice locally
+np.random.seed(12)   #42 is a good choice locally
 rs = np.arange(len(X))
 np.random.shuffle(rs)
 rs = rs[0:n_draw]
 
-# plot sub-regions
+# plot spectra sub-regions
 lims = [(5000,5050),(6525,6600)]
 for lim in lims:
     l1, l2 = lim
@@ -55,15 +54,14 @@ for lim in lims:
     plt.savefig('output/mean_spectra_n%d_%d-%d.png'%(n_spec, l1, l2))
     plt.close()
 
-lims = [(5000,5050),(6525,6600)]
+# plot PCA sub-regions
 for lim in lims:
     l1, l2 = lim
     f, ax = plt.subplots(n_pcs, 1, sharex=True, figsize=(12,8))
     plt.subplots_adjust(hspace=0)
-    ax[0].set_ylabel('PC 0 and 1')
     ax[n_pcs-1].set_xlabel('wavelength (angstroms)')
     for i in range(0, n_pcs):
-        ax[i].plot(wavelengths, V[i,:], ',')
+        ax[i].plot(wavelengths, V[i,:], linewidth=1)
         ax[i].set_ylabel('PC %d'%(i+1))
     ax[0].set_title('explained variance = %f, n_spectra=%d'%(ev, n_spec))
     ax[0].set_xlim([l1,l2])
