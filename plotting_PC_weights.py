@@ -37,7 +37,9 @@ plt.close()
 
 n_draw = 20
 np.random.seed(42)
-rs = np.random.randint(0,len(X),n_draw)
+rs = np.arange(len(X))
+np.random.shuffle(arr)
+rs = rs[0:n_draw]
 
 # plot sub-regions
 lims = [(4900,5100),(6400,6650)]
