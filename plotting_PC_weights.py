@@ -35,10 +35,10 @@ plt.ylabel('flux')
 plt.savefig('output/mean_spectra_n%d.png'%n_spec)
 plt.close()
 
-n_draw = 20
+n_draw = 100
 np.random.seed(42)
 rs = np.arange(len(X))
-np.random.shuffle(arr)
+np.random.shuffle(rs)
 rs = rs[0:n_draw]
 
 # plot sub-regions
