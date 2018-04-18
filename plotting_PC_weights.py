@@ -36,13 +36,13 @@ plt.savefig('output/mean_spectra_n%d.png'%n_spec)
 plt.close()
 
 n_draw = 100
-np.random.seed(42)
+np.random.seed(30)   #42 is a good choice locally
 rs = np.arange(len(X))
 np.random.shuffle(rs)
 rs = rs[0:n_draw]
 
 # plot sub-regions
-lims = [(4900,5100),(6400,6650)]
+lims = [(5000,5050),(6525,6600)]
 for lim in lims:
     l1, l2 = lim
     plt.figure(figsize=(13,8))
