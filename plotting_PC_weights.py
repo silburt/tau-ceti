@@ -12,21 +12,22 @@ wavelims = (3800,6850)              # full range
 
 # do PCA
 X, V, Z, Xs_hat, X_hat, wavelengths, ev, n_spec = pca_py.do_PCA(dir, wavelims, n_pcs)
+X_mean = np.mean(X, axis=0)
 
 # plot PCs
 f, ax = plt.subplots(n_pcs, 1, sharex=True, figsize=(12,8))
 plt.subplots_adjust(hspace=0)
 ax[n_pcs-1].set_xlabel('wavelength (angstroms)')
+ex_var = 1 - np.sum((X - X_hat)**2) / np.sum((X - X_mean)**2)
 for i in range(0, n_pcs):
     ax[i].plot(wavelengths, V[i,:], ',')
     ax[i].set_ylabel('PC %d'%(i+1))
 
-ax[0].set_title('explained variance = %f, n_spectra=%d'%(ev, n_spec))
+ax[0].set_title('explained variance = %f, n_spectra=%d'%(ex_var, n_spec))
 plt.savefig('output/pca_visualize_%dcomponents_n%d.png'%(n_pcs, n_spec))
 plt.close()
 
 # plot mean Spectra
-X_mean = np.mean(X, axis=0)
 plt.figure(figsize=(13,8))
 plt.plot(wavelengths, X_mean)
 plt.xlabel('wavelength (angstroms)')

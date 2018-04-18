@@ -127,7 +127,7 @@ def do_PCA(dir, wavelimits, n_components, save=1):
     X, wavelengths, means, stds = X[:,good_rows], wavelengths[good_rows], means[good_rows], stds[good_rows]
     
     # remove bad spectra
-    std_spec_cutoff = 4
+    std_spec_cutoff = 1000      # set to low value to filter bad spectra
     good_spec = np.where(np.max(np.abs((X - means)/stds), axis=1)<std_spec_cutoff)[0]
     X = X[good_spec]
     
